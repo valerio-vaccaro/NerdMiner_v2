@@ -5,13 +5,15 @@
 #include <WiFi.h>
 #include <SPIFFS.h>
 #include <FS.h>
-
 #include <WiFiManager.h>
 #include <ArduinoJson.h>
-#include "media/images.h"
-#include <TFT_eSPI.h> // Graphics and font library
 #include "wManager.h"
 #include "monitor.h"
+
+#if defined NERDMINERV2
+#include <TFT_eSPI.h> // Graphics and font library
+#include "media/images.h"
+#endif
 
 // JSON configuration file
 #define JSON_CONFIG_FILE "/config.json"
@@ -29,8 +31,10 @@ int GMTzone = 2; //Currently selected in spain
 // Define WiFiManager Object
 WiFiManager wm;
 
-
+#if defined NERDMINERV2
 extern TFT_eSPI tft;  // tft variable declared on main
+#endif
+
 extern monitor_data mMonitor;
 
 void saveConfigFile()
@@ -142,14 +146,16 @@ void init_WifiManager()
   Serial.begin(115200);
   //Serial.setTxTimeoutMs(10);
 
+  #if defined NERDMINERV2
   //Init pin 15 to eneble 5V external power (LilyGo bug)
   pinMode(PIN_ENABLE5V, OUTPUT);
   digitalWrite(PIN_ENABLE5V, HIGH);
+  #endif
 
   // Change to true when testing to force configuration every time we run
   bool forceConfig = false;
 
-  #if !defined(DEVKITV1)
+  #if defined NERDMINERV2
   // Check if button2 is pressed to enter configMode with actual configuration
   if(!digitalRead(PIN_BUTTON_2)){
     Serial.println(F("Button pressed to force start config mode"));
@@ -222,7 +228,9 @@ void init_WifiManager()
   {
     //No configuramos timeout al modulo
     wm.setConfigPortalBlocking(true); //Hacemos que el portal SI bloquee el firmware
+    #if defined NERDMINERV2
     tft.pushImage(0, 0, setupModeWidth, setupModeHeight, setupModeScreen);
+    #endif
     if (!wm.startConfigPortal("NerdMinerAP","MineYourCoins"))
     {
       Serial.println("failed to connect and hit timeout");
@@ -319,5 +327,3 @@ void wifiManagerProcess() {
     oldStatus = newStatus;
   }
 }
-
-

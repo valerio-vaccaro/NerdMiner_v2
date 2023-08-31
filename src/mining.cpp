@@ -2,16 +2,19 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <esp_task_wdt.h>
-#include <TFT_eSPI.h> // Graphics and font library for ILI9341 driver chip
 #include "ShaTests/nerdSHA256.h"
-//#include "ShaTests/nerdSHA256plus.h"
-#include "media/Free_Fonts.h"
-#include "media/images.h"
-#include "OpenFontRender.h"
 #include "stratum.h"
 #include "mining.h"
 #include "utils.h"
 #include "monitor.h"
+
+#if defined NERDMINERV2
+// todo: remove?
+#include <TFT_eSPI.h> // Graphics and font library for ILI9341 driver chip
+#include "media/Free_Fonts.h"
+#include "media/images.h"
+#include "OpenFontRender.h"
+#endif
 
 unsigned long templates = 0;
 unsigned long hashes= 0;
@@ -31,8 +34,11 @@ extern int portNumber;
 extern char btcString[80];
 IPAddress serverIP(1, 1, 1, 1); //Temporally save poolIPaddres
 
+#if defined NERDMINERV2
+// todo: remove?
 extern OpenFontRender render;
 extern TFT_eSprite background;
+#endif
 
 //Global work data 
 static WiFiClient client;

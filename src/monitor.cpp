@@ -1,16 +1,15 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <TFT_eSPI.h> // Graphics and font library for ILI9341 driver chip
-#include "media/Free_Fonts.h"
-#include "media/images.h"
+
 #include "mbedtls/md.h"
-#include "OpenFontRender.h"
 #include "HTTPClient.h"
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include "mining.h"
 #include "utils.h"
 #include "monitor.h"
+#include "gui.h"
+
 
 extern char poolString[80];
 extern unsigned long templates;
@@ -24,8 +23,6 @@ extern unsigned int valids; // increased if blockhash <= target
 
 extern double best_diff; // track best diff
 
-extern OpenFontRender render;
-extern TFT_eSprite background;
 extern monitor_data mMonitor;
 
 extern int GMTzone; //Gotten from saved config
@@ -229,81 +226,40 @@ void show_NoScreen(unsigned long mElapsed){
 }
 
 void show_MinerScreen(unsigned long mElapsed){
-
-    //Print background screen
-    background.pushImage(0, 0, MinerWidth, MinerHeight, MinerScreen); 
-
-    char CurrentHashrate[10] = {0};
-    sprintf(CurrentHashrate, "%.2f", (1.0*(elapsedKHs*1000))/mElapsed);
-
-    //Serial.println("[runMonitor Task] -> Printing results on screen ");
-    
-     Serial.printf(">>> Completed %d share(s), %d Khashes, avg. hashrate %s KH/s\n",
-      shares, totalKHashes, CurrentHashrate);
-
+    init_minerScreen();
+    Serial.printf(">>> Completed %d share(s), %d Khashes, avg. hashrate %.2f KH/s\n",
+      shares, totalKHashes, (1.0*(elapsedKHs*1000))/mElapsed);
     //Hashrate
-    render.setFontSize(35);
-    render.setCursor(19, 118);
-    render.setFontColor(TFT_BLACK);
-    
-    render.rdrawString(CurrentHashrate, 118, 114, TFT_BLACK);
+    update_hashrate((1.0*(elapsedKHs*1000))/mElapsed);
     //Total hashes
-    render.setFontSize(18);
-    render.rdrawString(String(Mhashes).c_str(), 268, 138, TFT_BLACK);
+    update_totalHashrate(Mhashes);
     //Block templates
-    render.setFontSize(18);
-    render.drawString(String(templates).c_str(), 186, 20, 0xDEDB);
+    update_templates(templates);
     //Best diff
-    char best_diff_string[16] = {0};
-    suffix_string(best_diff, best_diff_string, 16, 0);
-    render.setFontSize(18);
-    render.drawString(String(best_diff_string).c_str(), 186, 48, 0xDEDB);
+    update_bestDiff(best_diff);
     //32Bit shares
-    render.setFontSize(18);
-    render.drawString(String(shares).c_str(), 186, 76, 0xDEDB);
-    //Hores
-    char timeMining[15]; 
+    update_shares(shares);
+    // uptime
+    update_uptime();
 
-    unsigned long secElapsed = millis() / 1000;
-    int days = secElapsed / 86400; 
-    int hours = (secElapsed - (days * 86400)) / 3600;                                                        //Number of seconds in an hour
-    int mins = (secElapsed - (days * 86400) - (hours * 3600)) / 60;                                              //Remove the number of hours and calculate the minutes.
-    int secs = secElapsed - (days * 86400) - (hours * 3600) - (mins * 60);   
-    sprintf(timeMining, "%01d  %02d:%02d:%02d", days, hours, mins, secs);
-    render.setFontSize(14);
-    render.rdrawString(String(timeMining).c_str(), 315, 104, 0xDEDB);
+    // valid Blocks
+    update_valid(valids);
+    // print Temp
+    update_temp(temperatureRead());
+    // print time
+    update_time(getTime());
 
-    //Valid Blocks
-    render.setFontSize(24);
-    render.drawString(String(valids).c_str(), 285, 56, 0xDEDB);
-
-    //Print Temp
-    String temp = String(temperatureRead(), 0);
-    render.setFontSize(10);
-    render.rdrawString(String(temp).c_str(), 239, 1, TFT_BLACK);
-
-    render.setFontSize(4);
-    render.rdrawString(String(0).c_str(), 244, 3, TFT_BLACK);
-
-    //Print Hour
-    render.setFontSize(10);
-    render.rdrawString(getTime().c_str(), 286, 1, TFT_BLACK);
-
-    // pool url
-    /*background.setTextSize(1);
-    background.setTextDatum(MC_DATUM);
-    background.setTextColor(0xDEDB);
-    background.drawString(String(poolString), 59, 85, FONT2);*/
-
-    //Push prepared background to screen
-    background.pushSprite(0,0);
+    // push prepared background to screen
+    push_minerScreen();
 }
 
 
 void show_ClockScreen(unsigned long mElapsed){
 
+    #if defined NERDMINERV2
     //Print background screen
-    background.pushImage(0, 0, minerClockWidth, minerClockHeight, minerClockScreen); 
+    background.pushImage(0, 0, minerClockWidth, minerClockHeight, minerClockScreen);
+    #endif
 
     char CurrentHashrate[10] = {0};
     sprintf(CurrentHashrate, "%.2f", (1.0*(elapsedKHs*1000))/mElapsed);
@@ -312,7 +268,8 @@ void show_ClockScreen(unsigned long mElapsed){
     
      Serial.printf(">>> Completed %d share(s), %d Khashes, avg. hashrate %s KH/s\n",
       shares, totalKHashes, CurrentHashrate);
-
+    
+    #if defined NERDMINERV2
     //Hashrate
     render.setFontSize(25);
     render.setCursor(19, 122);
@@ -346,12 +303,15 @@ void show_ClockScreen(unsigned long mElapsed){
 
     //Push prepared background to screen
     background.pushSprite(0,0);
+    #endif
 }
 
 void show_GlobalHashScreen(unsigned long mElapsed){
 
+    #if defined NERDMINERV2
     //Print background screen
     background.pushImage(0, 0, globalHashWidth, globalHashHeight, globalHashScreen); 
+    #endif
 
     char CurrentHashrate[10] = {0};
     sprintf(CurrentHashrate, "%.2f", (1.0*(elapsedKHs*1000))/mElapsed);
@@ -364,6 +324,7 @@ void show_GlobalHashScreen(unsigned long mElapsed){
     //Hashrate
     updateGlobalData(); //Update gData vars asking mempool APIs
     
+    #if defined NERDMINERV2
     //Print BTC Price
     background.setFreeFont(FSSB9);
     background.setTextSize(1);
@@ -419,6 +380,7 @@ void show_GlobalHashScreen(unsigned long mElapsed){
 
     //Push prepared background to screen
     background.pushSprite(0,0);
+    #endif
 }
 
 // Variables para controlar el parpadeo con millis()
